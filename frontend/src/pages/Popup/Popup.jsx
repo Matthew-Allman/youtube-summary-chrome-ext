@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import Axios from 'axios';
+
+const API_URL = 'http://localhost:9009';
+
+Axios.defaults.withCredentials = false;
 
 const Popup = () => {
   const [currUrl, setCurrUrl] = useState('');
@@ -10,6 +15,24 @@ const Popup = () => {
   const [loading, setLoading] = useState(false);
   const [errMessage, setErrMessage] = useState('');
   const [textData, setTextData] = useState('');
+  const [videos, setVideos] = useState([]);
+
+  const getSummary = async (videoID) => {
+    const url = API_URL + '/youtube/summarize';
+    const body = { videoID };
+
+    await Axios.post(url, body)
+      .then((response) => {
+        if (response.data.status == 200) {
+          setTextData(response.data.message);
+        } else if (response.data.errMessage) {
+          setErrMessage(response.data.errMessage);
+        }
+      })
+      .catch(() => {
+        setErrMessage('Something went wrong, please try again.');
+      });
+  };
 
   const fetchSelectedText = () => {
     chrome.runtime.sendMessage({ action: 'getSelectedText' }, (response) => {
@@ -43,7 +66,7 @@ const Popup = () => {
           videoID = match[1];
         }
 
-        setTextData(videoID);
+        await getSummary(videoID);
       } else {
         setErrMessage('Please enter a valid Youtube URL or Video ID');
       }
@@ -53,6 +76,9 @@ const Popup = () => {
   };
 
   const handleCurrUrl = async () => {
+    setLoading(true);
+    setErrMessage('');
+
     const extractRegex =
       /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|user\/[^\/]+\/playlist\/|playlist\?list=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
@@ -61,12 +87,44 @@ const Popup = () => {
     const videoID = match[1];
 
     if (/^[a-zA-Z0-9_-]{11}$/.test(videoID)) {
-      setTextData(videoID);
+      await getSummary(videoID);
     }
+
+    setLoading(false);
   };
 
   const handleText = async () => {
+    setErrMessage('');
+
     const input = textInput || selectedText;
+
+    const url = API_URL + '/youtube/search';
+    const body = { query: input };
+
+    await Axios.post(url, body)
+      .then((response) => {
+        if (response.data.status == 200) {
+          if (response.data.videos.length > 0) {
+            setVideos(response.data.videos);
+          } else {
+            setErrMessage('Could not find any related videos.');
+          }
+        }
+      })
+      .catch(() => {
+        setErrMessage('Something went wrong, please try again.');
+      });
+  };
+
+  const handleVideoClick = async (item) => {
+    setVideos([]);
+    setLoading(true);
+    setErrMessage('');
+
+    const videoID = item.id;
+    await getSummary(videoID);
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -114,7 +172,7 @@ const Popup = () => {
                 onClick={handleCurrUrl}
                 className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 transition duration-300 rounded-md text-white font-medium text-[14px]"
               >
-                Summarize Current Video
+                {loading ? 'Loading...' : 'Summarize Current Video'}
               </button>
             ) : (
               <button className="w-[40%] h-[40px] bg-red-600 cursor-not-allowed rounded-md text-white font-medium text-[14px]">
@@ -143,11 +201,6 @@ const Popup = () => {
                   {loading ? 'Loading...' : 'Summarize'}
                 </button>
               </span>
-              {errMessage && (
-                <p className="text-[13px] text-red-500 font-medium mt-3">
-                  {errMessage}
-                </p>
-              )}
             </div>
           ) : selected === 'name' ? (
             <div className=" mt-4 w-full h-auto flex flex-col items-start justify-start">
@@ -167,19 +220,48 @@ const Popup = () => {
                   onClick={handleText}
                   className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 disabled:bg-green-600 disabled:cursor-not-allowed rounded-md text-white font-medium text-[14px]"
                 >
-                  {loading ? 'Loading...' : 'Summarize'}
+                  {loading ? 'Loading...' : 'Find Videos'}
                 </button>
               </span>
-              {errMessage && (
-                <p className="text-[13px] text-red-500 font-medium mt-3">
-                  {errMessage}
-                </p>
+              {videos.length > 0 && (
+                <div className=" w-full h-auto flex flex-col items-start justify-between gap-y-3 mt-4">
+                  {videos.map((item) => (
+                    <span
+                      onClick={() => handleVideoClick(item)}
+                      className=" w-full flex-1 flex flex-row items-start justify-start gap-x-4 cursor-pointer hover:bg-slate-100 p-2 transition duration-300"
+                    >
+                      <div className="w-[80px] h-[80px] rounded-md border-2 border-black flex items-center justify-center">
+                        <img
+                          src={item.thumbnail}
+                          alt={item.id}
+                          className="w-fit h-fit"
+                        />
+                      </div>
+                      <div className=" w-[80%] h-auto max-h-[80px] overflow-y-auto flex flex-col items-start justify-start gap-y-2">
+                        <strong className=" text-[14px] font-medium">
+                          {item.title}
+                        </strong>
+                        <p className=" text-wrap text-[13px] leading-tight">
+                          {item.description}
+                        </p>
+                      </div>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           ) : null}
+          {errMessage && (
+            <p className="text-[13px] text-red-500 font-medium mt-3">
+              {errMessage}
+            </p>
+          )}
           {textData.length > 0 && (
             <div className="w-full h-auto max-h-[200px] overflow-y-auto mt-3 flex items-start justify-start">
-              <p className="text-[13px] text-black">{textData}</p>
+              <div
+                className=" text-black text-[14px]"
+                dangerouslySetInnerHTML={{ __html: textData }}
+              ></div>
             </div>
           )}
         </div>

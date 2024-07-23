@@ -1,5 +1,3 @@
-console.log('background script working');
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getSelectedText') {
     // Get the active tab where the message is sent from
@@ -17,8 +15,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               activeTab.id,
               { action: 'getSelectedText' },
               (response) => {
-                console.log('response', response);
-
                 sendResponse(response);
               }
             );

@@ -71,10 +71,12 @@ router.route("/summarize").post(async (req, res) => {
       });
 
       if (completion?.choices?.[0]?.message) {
-        res.send({
-          message: completion?.choices?.[0]?.message?.content,
-          status: 200,
-        });
+        let message = completion.choices[0].message.content;
+        message = message.replaceAll("```html", "").replaceAll("```", "");
+
+        res.send({ message, status: 200 });
+      } else {
+        res.sendStatus(500);
       }
     } else {
       res.send({ errMessage: "Video too long to summarize." });
