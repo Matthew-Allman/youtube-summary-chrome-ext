@@ -1,6 +1,25 @@
-import { printLine } from './modules/print';
+console.log('Content script loaded');
 
-console.log('Content script works!');
-console.log('Must reload extension for modifications to take effect.');
+function getSelectedText() {
+  let selectedText = '';
 
-printLine("Using the 'printLine' function from the Print Module");
+  if (window.getSelection) {
+    selectedText = window.getSelection().toString();
+  }
+
+  console.log('selectedText', selectedText);
+
+  return selectedText;
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('request', request);
+
+  if (request.action === 'getSelectedText') {
+    const selectedText = getSelectedText();
+
+    console.log('selectedText', selectedText);
+
+    sendResponse({ selectedText });
+  }
+});
