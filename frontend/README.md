@@ -47,9 +47,3 @@ Feel free to fork the repository and make improvements. Pull requests are welcom
 ## License
 
 This project is open-source and available under the [MIT License](../LICENSE).
-
-
-
----
-
-Michael Xieyang Liu | [Website](https://lxieyang.github.io)
