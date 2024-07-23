@@ -27,14 +27,8 @@ This frontend, built with React, Tailwind, and Webpack, is the user interface fo
     ```bash
     npm start
     ```
-
-4. **Build the Frontend**
-
-    ```bash
-    npm run build
-    ```
-
-5. **Load the Extension in Chrome**
+    
+4. **Load the Extension in Chrome**
 
     - Open Chrome and navigate to `chrome://extensions/`.
     - Enable "Developer mode" by toggling the switch in the top right corner.
