@@ -1,4 +1,4 @@
-const API_KEY = process.env.YOUTUBE_API_KEY; // Replace with your actual API key
+const API_KEY = process.env.YOUTUBE_API_KEY;
 const MAX_RESULTS = 3;
 
 async function searchYouTubeVideos(query) {
