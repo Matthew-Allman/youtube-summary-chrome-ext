@@ -159,6 +159,7 @@ var options = {
         },
       ],
     }),
+
     new CopyWebpackPlugin({
       patterns: [
         {

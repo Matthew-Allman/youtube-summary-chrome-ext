@@ -1,16 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const Popup = () => {
   const [currUrl, setCurrUrl] = useState('');
   const [selected, setSelected] = useState('');
   const [selectedText, setSelectedText] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [textInput, setTextInput] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [errMessage, setErrMessage] = useState('');
+  const [textData, setTextData] = useState('');
 
   const fetchSelectedText = () => {
     chrome.runtime.sendMessage({ action: 'getSelectedText' }, (response) => {
-      console.log(response);
-
       setSelectedText(response?.selectedText);
     });
+  };
+
+  const handleURL = async () => {
+    setLoading(true);
+    setErrMessage('');
+
+    if (urlInput.length > 0 || selectedText.length > 0) {
+      const input = urlInput || selectedText;
+      const regex = /^[a-zA-Z0-9_-]{11}$/;
+
+      if (
+        regex.test(input) ||
+        input.startsWith('https://www.youtube.com/watch')
+      ) {
+        let videoID = '';
+
+        if (regex.test(input)) {
+          videoID = input;
+        } else {
+          const extractRegex =
+            /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|user\/[^\/]+\/playlist\/|playlist\?list=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+
+          // Match the URL against the regex
+          const match = input.match(extractRegex);
+
+          videoID = match[1];
+        }
+
+        setTextData(videoID);
+      } else {
+        setErrMessage('Please enter a valid Youtube URL or Video ID');
+      }
+    }
+
+    setLoading(false);
+  };
+
+  const handleCurrUrl = async () => {
+    const extractRegex =
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|user\/[^\/]+\/playlist\/|playlist\?list=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+
+    // Match the URL against the regex
+    const match = currUrl.match(extractRegex);
+    const videoID = match[1];
+
+    if (/^[a-zA-Z0-9_-]{11}$/.test(videoID)) {
+      setTextData(videoID);
+    }
+  };
+
+  const handleText = async () => {
+    const input = textInput || selectedText;
   };
 
   useEffect(() => {
@@ -26,8 +82,8 @@ const Popup = () => {
   }, []);
 
   useEffect(() => {
-    console.log('selectedText1', selectedText);
-  }, [selectedText]);
+    setTextData('');
+  }, [selected]);
 
   return (
     <section className=" w-[500px] h-auto border bg-white">
@@ -54,12 +110,15 @@ const Popup = () => {
             </select>
 
             {currUrl.includes('https://www.youtube.com/watch') ? (
-              <button className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 transition duration-300 rounded-md text-white font-medium text-[14px]">
+              <button
+                onClick={handleCurrUrl}
+                className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 transition duration-300 rounded-md text-white font-medium text-[14px]"
+              >
                 Summarize Current Video
               </button>
             ) : (
-              <button className="w-[40%] h-[40px] bg-green-600 cursor-not-allowed rounded-md text-white font-medium text-[14px]">
-                Summarize
+              <button className="w-[40%] h-[40px] bg-red-600 cursor-not-allowed rounded-md text-white font-medium text-[14px]">
+                Invalid URL
               </button>
             )}
           </span>
@@ -71,18 +130,58 @@ const Popup = () => {
               </p>
               <span className="w-full h-auto mt-2 flex flex-row items-start justify-start gap-x-3">
                 <input
+                  onChange={(e) => setUrlInput(e.target.value)}
                   placeholder="Optional..."
                   type="text"
                   className=" w-[60%] h-[40px] border-2 border-black pl-3 rounded-md text-[14px]"
                 />
-                <button className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 rounded-md text-white font-medium text-[14px]">
-                  Summarize
+                <button
+                  disabled={!selectedText.length && !urlInput.length}
+                  onClick={handleURL}
+                  className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 disabled:bg-green-600 disabled:cursor-not-allowed rounded-md text-white font-medium text-[14px]"
+                >
+                  {loading ? 'Loading...' : 'Summarize'}
                 </button>
               </span>
+              {errMessage && (
+                <p className="text-[13px] text-red-500 font-medium mt-3">
+                  {errMessage}
+                </p>
+              )}
             </div>
           ) : selected === 'name' ? (
-            <div></div>
+            <div className=" mt-4 w-full h-auto flex flex-col items-start justify-start">
+              <p className=" text-[13px] leading-tight mt-2 font-medium">
+                Highlight or enter text to search YouTube and find related
+                videos for summarization.
+              </p>
+              <span className="w-full h-auto mt-2 flex flex-row items-start justify-start gap-x-3">
+                <input
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Optional..."
+                  type="text"
+                  className=" w-[60%] h-[40px] border-2 border-black pl-3 rounded-md text-[14px]"
+                />
+                <button
+                  disabled={!selectedText.length && !textInput.length}
+                  onClick={handleText}
+                  className="w-[40%] h-[40px] bg-green-500 hover:bg-green-600 disabled:bg-green-600 disabled:cursor-not-allowed rounded-md text-white font-medium text-[14px]"
+                >
+                  {loading ? 'Loading...' : 'Summarize'}
+                </button>
+              </span>
+              {errMessage && (
+                <p className="text-[13px] text-red-500 font-medium mt-3">
+                  {errMessage}
+                </p>
+              )}
+            </div>
           ) : null}
+          {textData.length > 0 && (
+            <div className="w-full h-auto max-h-[200px] overflow-y-auto mt-3 flex items-start justify-start">
+              <p className="text-[13px] text-black">{textData}</p>
+            </div>
+          )}
         </div>
       </div>
     </section>
