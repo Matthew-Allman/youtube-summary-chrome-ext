@@ -17,6 +17,9 @@ app.use((_, res, next) => {
   next();
 });
 
+const youtube = require("./routes/youtube");
+app.use("/youtube", youtube);
+
 // Start the server on the specified port
 //
 app.listen(process.env.PORT, () => {
