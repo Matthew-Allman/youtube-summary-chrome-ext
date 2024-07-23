@@ -2,21 +2,17 @@
   "manifest_version": 3,
   "name": "Youtube Summary Chrome Extension",
   "description": "A chrome extension that utilizes gpt-4o mini to summarize youtube videos",
+  "permissions": ["activeTab", "tabs", "scripting"],
   "options_page": "options.html",
   "background": { "service_worker": "background.bundle.js" },
   "action": {
     "default_popup": "popup.html",
     "default_icon": "icon-34.png"
   },
-  "chrome_url_overrides": {
-    "newtab": "newtab.html"
-  },
-  "icons": {
-    "128": "icon-128.png"
-  },
+
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*", "<all_urls>"],
+      "matches": ["*://*.youtube.com/*"],
       "js": ["contentScript.bundle.js"],
       "css": ["content.styles.css"]
     }
