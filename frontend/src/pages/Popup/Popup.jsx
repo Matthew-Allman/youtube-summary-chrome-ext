@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
 
+import Speech from 'speak-tts';
+
+import { HiSpeakerWave } from 'react-icons/hi2';
+import { FaPause } from 'react-icons/fa6';
+import { FaPlay } from 'react-icons/fa';
+
 const API_URL = 'http://localhost:9009';
 
 Axios.defaults.withCredentials = false;
+const speech = new Speech();
 
 const Popup = () => {
   const [currUrl, setCurrUrl] = useState('');
@@ -14,8 +21,11 @@ const Popup = () => {
 
   const [loading, setLoading] = useState(false);
   const [errMessage, setErrMessage] = useState('');
-  const [textData, setTextData] = useState('');
+  const [textData, setTextData] = useState(``);
   const [videos, setVideos] = useState([]);
+
+  const [ttsReady, setTTSReady] = useState(false);
+  const [speechState, setSpeechState] = useState('not playing');
 
   const getSummary = async (videoID) => {
     const url = API_URL + '/youtube/summarize';
@@ -137,6 +147,24 @@ const Popup = () => {
         setCurrUrl(currentTab.url);
       }
     });
+
+    if (speech.browserSupport) {
+      speech
+        .init({
+          volume: 1,
+          lang: 'en-US',
+          rate: 1,
+          pitch: 1,
+          voice: 'Google UK English Male',
+          splitSentences: true,
+        })
+        .then(() => {
+          setTTSReady(true);
+        })
+        .catch(() => {
+          setTTSReady(false);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -257,11 +285,58 @@ const Popup = () => {
             </p>
           )}
           {textData.length > 0 && (
-            <div className="w-full h-auto max-h-[200px] overflow-y-auto mt-3 flex items-start justify-start">
-              <div
-                className=" text-black text-[14px]"
-                dangerouslySetInnerHTML={{ __html: textData }}
-              ></div>
+            <div className=" w-auto h-auto flex flex-col items-start justify-start mt-5">
+              {speechState == 'not playing' && ttsReady ? (
+                <HiSpeakerWave
+                  onClick={() => {
+                    const tempDiv = document.createElement('div');
+
+                    tempDiv.innerHTML = textData;
+                    const textContent =
+                      tempDiv.textContent || tempDiv.innerText || '';
+
+                    speech.speak({
+                      text: textContent,
+                      listeners: {
+                        onended: () => setSpeechState('not playing'),
+                      },
+                    });
+
+                    if (speech.speaking()) {
+                      setSpeechState('speaking');
+                    }
+                  }}
+                  size={20}
+                  className=" cursor-pointer"
+                />
+              ) : speechState == 'speaking' ? (
+                <FaPause
+                  size={20}
+                  className=" cursor-pointer"
+                  onClick={() => {
+                    speech.pause();
+                    setSpeechState('paused');
+                  }}
+                />
+              ) : speechState == 'paused' ? (
+                <FaPlay
+                  size={20}
+                  className=" cursor-pointer"
+                  onClick={() => {
+                    speech.resume();
+
+                    if (speech.speaking()) {
+                      setSpeechState('speaking');
+                    }
+                  }}
+                />
+              ) : null}
+              <div className="w-full h-auto max-h-[200px] overflow-y-auto mt-3 flex items-start justify-start">
+                <div
+                  className=" text-black text-[14px]"
+                  dangerouslySetInnerHTML={{ __html: textData }}
+                ></div>
+              </div>
             </div>
           )}
         </div>
